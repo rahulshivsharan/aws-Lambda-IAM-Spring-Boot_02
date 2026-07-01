@@ -1,16 +1,3 @@
-This is awesome Rahul 👏 — you’ve built a **full production-grade serverless backend**, so creating a strong README is exactly the right next step ✅
-
-I’ve created a **complete, professional README.md** tailored to your project based on everything you implemented 👇
-
-***
-
-# 📄 ✅ README.md (READY TO USE)
-
-You can copy this directly into your GitHub repo:
-
-***
-
-```markdown
 # 🚀 AWS Lambda IAM Admin API (Spring-style Java Backend)
 
 This project is a **serverless IAM Admin API** built using:
@@ -30,9 +17,7 @@ This application provides **REST APIs to manage AWS IAM users and policies**, de
 It implements a clean backend layered design:
 
 ```
-
 API Gateway → Lambda → Router → Handler → Controller → Service → AWS IAM
-
 ```
 
 ---
@@ -52,23 +37,110 @@ API Gateway → Lambda → Router → Handler → Controller → Service → AWS
 # 🏗️ ✅ Architecture
 
 ```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         REQUEST FLOW DIAGRAM                             │
+└──────────────────────────────────────────────────────────────────────────┘
 
-📬 Client (Postman / Curl)
-↓
-🌐 API Gateway (REST API)
-↓
-⚡ Lambda (ApiHandler)
-↓
-🔀 LambdaRouter (Custom Routing)
-↓
-🎯 Handler Layer
-↓
-🎮 Controller Layer (IAMController)
-↓
-⚙️ Service Layer (IAMService)
-↓
-☁️ AWS IAM
+                    📬 Client (Postman / Curl)
+                              │
+                              │ HTTPS Request
+                              ▼
+                  ┌─────────────────────────┐
+                  │   API Gateway REST API  │
+                  │  (Routing /users, etc.) │
+                  └────────────┬────────────┘
+                               │
+                               │ Lambda Proxy Integration
+                               ▼
+                  ┌─────────────────────────┐
+                  │  AWS Lambda (ApiHandler)│
+                  │  Entry point for app    │
+                  └────────────┬────────────┘
+                               │
+                               ▼
+                  ┌─────────────────────────┐
+                  │   LambdaRouter          │
+                  │  (Custom Routing Engine)│
+                  │  - Matches method+path  │
+                  │  - Extracts parameters  │
+                  └────────────┬────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+    ┌──────────────────┐ ┌──────────────┐ ┌──────────────────┐
+    │ ListUsersHandler │ │CreateUserH.  │ │AttachPolicyH.    │
+    │ (GET /users)     │ │(POST /users) │ │(POST /users/.../p)
+    └────────┬─────────┘ └──────┬───────┘ └────────┬─────────┘
+             │                   │                  │
+             └───────────────────┼──────────────────┘
+                                 │
+                                 ▼
+                  ┌─────────────────────────────┐
+                  │   IAMController             │
+                  │  Business Logic Coordinator │
+                  │  - listUsers()              │
+                  │  - createUser()             │
+                  │  - attachPolicyToUser()     │
+                  │  - listUserPolicies()       │
+                  │  - listAccessKeys()         │
+                  └────────────┬────────────────┘
+                               │
+                               ▼
+                  ┌─────────────────────────────┐
+                  │   IAMService                │
+                  │  (AWS SDK v2 Operations)    │
+                  │  - IamClient calls          │
+                  │  - Data transformation      │
+                  │  - Response mapping         │
+                  └────────────┬────────────────┘
+                               │
+                               ▼
+                  ┌─────────────────────────────┐
+                  │   AWS IAM Service           │
+                  │  - ListUsers                │
+                  │  - CreateUser               │
+                  │  - AttachUserPolicy         │
+                  │  - ListUserPolicies         │
+                  │  - ListAccessKeys           │
+                  └─────────────────────────────┘
+                               │
+                               │ IAM Response
+                               ▼
+         ┌─────────────────────────────────────────┐
+         │  Response flows back through layers:    │
+         │  IAMService → IAMController → Handler   │
+         │        → LambdaRouter → API Gateway     │
+         │              → Client (JSON response)   │
+         └─────────────────────────────────────────┘
 
+
+LAYER BREAKDOWN:
+═══════════════════════════════════════════════════
+
+🌐 API LAYER
+   └─ API Gateway: REST API endpoint routing
+
+⚡ LAMBDA LAYER  
+   └─ ApiHandler: AWS Lambda handler implementation
+
+🔀 ROUTING LAYER
+   └─ LambdaRouter: Custom route matching engine
+   
+🎯 HANDLER LAYER (Per-endpoint handlers)
+   ├─ ListUsersHandler: Handles GET /users
+   ├─ CreateUserHandler: Handles POST /users/{userName}
+   ├─ AttachPolicyHandler: Handles POST /users/{userName}/policy
+   ├─ ListUserPoliciesHandler: Handles GET /users/{userName}/policy
+   └─ ListAccessKeysHandler: Handles GET /users/{userName}/keys
+
+🎮 CONTROLLER LAYER
+   └─ IAMController: Orchestrates business operations
+
+⚙️ SERVICE LAYER
+   └─ IAMService: AWS SDK v2 integration & data mapping
+
+☁️ AWS LAYER
+   └─ AWS IAM: Actual AWS service
 ```
 
 ---
@@ -92,10 +164,8 @@ API Gateway → Lambda → Router → Handler → Controller → Service → AWS
 ## ✅ 1. List Users
 
 ```
-
 GET /users
-
-````
+```
 
 ### ✅ Response
 
@@ -107,7 +177,7 @@ GET /users
     "arn": "arn:aws:iam::123:user/rahulshivsharan"
   }
 ]
-````
+```
 
 ***
 
@@ -162,12 +232,36 @@ GET /users/{userName}/keys
 ```
 src/main/java/com/sp/ws/lambda
 │
-├── handler         → Lambda handlers (API layer)
-├── controller      → Business logic coordination
-├── service         → AWS SDK (IAM operations)
-├── router          → Custom routing engine
-├── config          → Spring bean configuration
-├── dto             → Data Transfer Objects
+├── handler              → Lambda request handlers (per-endpoint)
+│   ├── ApiHandler.java  → Main Lambda handler entry point
+│   ├── ListUsersHandler.java
+│   ├── CreateUserHandler.java
+│   ├── AttachPolicyHandler.java
+│   ├── ListUserPoliciesHandler.java
+│   ├── ListAccessKeysHandler.java
+│   └── RouteHandler.java (interface)
+│
+├── router               → Custom routing engine
+│   ├── LambdaRouter.java → Route matching & dispatching
+│   └── Route.java → Route definition & pattern matching
+│
+├── controller           → Business logic coordination
+│   └── IAMController.java → Orchestrates IAM operations
+│
+├── service              → AWS SDK integration
+│   └── IAMService.java → IAM API calls & data mapping
+│
+├── dto                  → Data Transfer Objects
+│   ├── IAMUserDTO.java
+│   ├── IAMPolicyDTO.java
+│   ├── IAMAccessKeyDTO.java
+│   └── AttachPolicyResponseDTO.java
+│
+├── mapper               → Data mapping utilities
+│   └── [Mapper classes]
+│
+└── config               → Spring bean configuration
+    └── AppConfig.java → Application context setup
 ```
 
 ***
@@ -265,6 +359,7 @@ For each resource:
 * GET /users
 * POST /users/{userName}
 * POST /users/{userName}/policy
+* GET /users/{userName}/policy
 * GET /users/{userName}/keys
 
 ***
@@ -379,6 +474,7 @@ curl -X POST /users/test-user/policy \
 * Custom routing engine (like Spring MVC)
 * Path variable handling
 * Dependency Injection using Spring Context
+* Layered architecture design (Handler → Controller → Service)
 
 ***
 
@@ -407,82 +503,3 @@ This project demonstrates:
 ✅ AWS production concepts
 
 Feel free to fork, enhance, and contribute 🚀
-
-```
-
----
-
-# 🚀 ✅ Bonus Suggestion for You
-
-Now that your repo is strong:
-
-👉 Add this to GitHub:
-
-- ✅ Architecture diagram (draw.io)
-- ✅ API collection (Postman export)
-- ✅ Screenshots of AWS setup  
-
----
-
-# 🎯 Final
-
-Rahul — this README is **resume-level** content ✅  
-
-👉 If you want, next I can help you:
-- Create **architecture diagram**
-- Add **Swagger/OpenAPI**
-- Improve **GitHub project presentation**
-
-Just tell me 👍
-```
-
-# 🏗️ Architecture Diagram
-
-Below is the high-level architecture of the application:
-
-``
-┌────────────────────────────┐
-              │        Client (Postman)    │
-              └──────────────┬─────────────┘
-                             │ HTTPS Request
-                             ▼
-              ┌────────────────────────────┐
-              │     API Gateway (REST API) │
-              │  - Routing (/users, etc.)  │
-              └──────────────┬─────────────┘
-                             │ Lambda Proxy Integration
-                             ▼
-              ┌────────────────────────────┐
-              │   AWS Lambda (ApiHandler)  │
-              │  Entry point for backend   │
-              └──────────────┬─────────────┘
-                             │
-                             ▼
-              ┌────────────────────────────┐
-              │      LambdaRouter          │
-              │  Custom routing engine     │
-              └──────────────┬─────────────┘
-                             │
-             ┌───────────────┴────────────────┐
-             ▼                                ▼
- ┌────────────────────────┐     ┌────────────────────────┐
- │   Handler Layer        │     │   Handler Layer        │
- │ ListUsersHandler       │     │ AttachPolicyHandler    │
- └──────────────┬─────────┘     └──────────────┬─────────┘
-                │                              │
-                ▼                              ▼
-        ┌────────────────────────────────────────────┐
-        │           IAMController (Business)         │
-        └────────────────────────┬───────────────────┘
-                                 │
-                                 ▼
-             ┌────────────────────────────────────┐
-             │        IAMService (AWS SDK v2)     │
-             │     Uses IamClient (Default Auth)  │
-             └────────────────────────┬───────────┘
-                                      │
-                                      ▼
-                        ┌──────────────────────────┐
-                        │        AWS IAM           │
-                        │ Users, Policies, Keys    │
-                        └──────────────────────────┘
